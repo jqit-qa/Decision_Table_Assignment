@@ -112,15 +112,22 @@
     else if (current.type === "stateTable") result = validator.validateStateTable(current, a.fields);
     else if (current.type === "pairwise") result = validator.validatePairwise(current, a.rows);
     else result = validator.validateQuiz(current, a.fields);
+    result = formatProductionFeedback(result);
     state.completed = state.completed.filter((item) => item !== key());
     if (result.pass) state.completed.push(key());
     save(); showResult(result, current); render();
   }
 
+  function formatProductionFeedback(result) {
+    if (result.pass || exercise().id !== "production") return result;
+    return { ...result, issues: ["仕様と回答を見比べ、条件・値・期待結果をまとめて見直してください。本番問題では個別の正答ヒントは表示しません。"] };
+  }
+
   function showResult(result, current) {
-    const quizAnswers = current.type === "quiz" ? `<dl class="quiz-answer-list">${current.questions.map((question, index) => `<div><dt>問${index + 1}</dt><dd><strong>${esc(question.options[question.answer])}</strong><p>${esc(question.explanation)}</p></dd></div>`).join("")}</dl>` : "";
-    const stats = result.stats ? `<p class="result-tip">被覆：${result.stats.covered} / ${result.stats.required} ペア</p>` : "";
-    const explanation = quizAnswers || (current.explanation ? `<div class="reference-answer"><strong>解説</strong><p>${esc(current.explanation)}</p></div>` : "");
+    const isProduction = exercise().id === "production";
+    const quizAnswers = result.pass && current.type === "quiz" ? `<dl class="quiz-answer-list">${current.questions.map((question, index) => `<div><dt>問${index + 1}</dt><dd><strong>${esc(question.options[question.answer])}</strong><p>${esc(question.explanation)}</p></dd></div>`).join("")}</dl>` : "";
+    const stats = (!isProduction || result.pass) && result.stats ? `<p class="result-tip">被覆：${result.stats.covered} / ${result.stats.required} ペア</p>` : "";
+    const explanation = quizAnswers || ((!isProduction || result.pass) && current.explanation ? `<div class="reference-answer"><strong>解説</strong><p>${esc(current.explanation)}</p></div>` : "");
     el.result.innerHTML = `<div class="result-icon ${result.pass ? "pass" : "retry"}">${result.pass ? "✓" : "!"}</div><p class="eyebrow">${result.pass ? "回答完了" : "要確認"}</p><h2>${result.pass ? "正しくできています" : "もう一度確認しましょう"}</h2>${stats}${result.issues.length ? `<ul class="issue-list">${result.issues.map((issue) => `<li>${esc(issue)}</li>`).join("")}</ul>` : ""}${explanation}`;
     el.dialog.showModal();
   }

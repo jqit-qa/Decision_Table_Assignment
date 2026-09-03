@@ -65,6 +65,9 @@ for (const exercise of exercises) {
 for (const file of ["index.html", "styles.css", "app.js", "validator.js", "data.js"]) assert.ok(fs.existsSync(file), `${file} が必要です`);
 const html = fs.readFileSync("index.html", "utf8");
 const css = fs.readFileSync("styles.css", "utf8");
+const app = fs.readFileSync("app.js", "utf8");
+assert.ok(app.includes("formatProductionFeedback") && app.includes("本番問題では個別の正答ヒントは表示しません"), "本番問題では個別の正答ヒントを隠すこと");
+assert.match(app, /result\.pass && current\.type === "quiz"/, "本番の理解度チェックは正解後だけ解答を表示すること");
 assert.match(html, /仕様/);
 assert.match(html, /回答/);
 assert.match(html, /自己学習用/);

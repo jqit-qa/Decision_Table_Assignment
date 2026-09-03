@@ -99,11 +99,15 @@
   }
 
   function isStepUnlocked(exercise, stepIndex) {
-    return exercise.steps.slice(0, stepIndex).every((step) => state.completed.includes(`${exercise.id}:${step.id}`));
+    const prerequisitesComplete = exercise.steps.slice(0, stepIndex).every((step) => state.completed.includes(`${exercise.id}:${step.id}`));
+    // 一度入力済みのステップは、前の回答を修正して未完了に戻っても再確認・修正できる。
+    return prerequisitesComplete || Boolean(state.answers[exercise.id]?.[exercise.steps[stepIndex]?.id]);
   }
 
   function isExerciseUnlocked(exerciseIndex) {
-    return exercises.slice(0, exerciseIndex).every((exercise) => exercise.steps.every((step) => state.completed.includes(`${exercise.id}:${step.id}`)));
+    const prerequisitesComplete = exercises.slice(0, exerciseIndex).every((exercise) => exercise.steps.every((step) => state.completed.includes(`${exercise.id}:${step.id}`)));
+    // いったん開始した問題は、前の問題を見直したあとも続きから再開できる。
+    return prerequisitesComplete || Boolean(Object.keys(state.answers[exercises[exerciseIndex]?.id] || {}).length);
   }
 
   function invalidateFrom(exercise, stepIndex) {
@@ -260,7 +264,11 @@
         <li>同じアクションで、条件が1つだけT/Fで違う2列を「○」で選びます。</li>
         <li>「選択した2列をまとめる」を押すと、違う条件が「−」になり1列へまとまります。</li>
       </ol>
-      <div class="merge-example"><code>A=T / B=T → X</code><b>＋</b><code>A=F / B=T → X</code><b>＝</b><code>A=− / B=T → X</code></div>
+      <div class="merge-example">
+        <strong>Aだけが違っても、どちらも同じ「X」になる場合の例です。</strong>
+        <div><code>列1：A=T / B=T → X</code><b>＋</b><code>列2：A=F / B=T → X</code><b>＝</b><code>A=− / B=T → X</code></div>
+        <p>つまり、AがTでもFでも結果は変わらないため、Aは「−」（どちらでもよい）にできます。Bは両方ともTなので、そのまま残します。</p>
+      </div>
       <p>${hasNA ? "N/Aは、実行不可能な組み合わせをまとめるときに使います。" : "この問題に実行不可能な組み合わせはないため、N/Aは使いません。"}</p>
     </div>`;
   }
@@ -429,6 +437,11 @@
         answer.selectedColumns = [...answer.selectedColumns.slice(-1), columnIndex];
       }
       answer.mergeMessage = "";
+      // ○の選択は統合候補を示すだけで、表そのものは変えていない。
+      // 完了状態を解除せず、選択表示だけ更新する。
+      saveState();
+      renderAnswerArea(step, exercise);
+      return;
     } else if (action === "merge") {
       if ((answer.selectedColumns || []).length !== 2) return;
       const [firstIndex, secondIndex] = [...answer.selectedColumns].sort((a, b) => a - b);
@@ -502,7 +515,36 @@
       const writingResult = validator.validateFields(step.fields, answer.fields);
       result = { pass: coverageResult.pass && writingResult.pass, issues: [...coverageResult.issues, ...writingResult.issues] };
     }
-    showResult(result, step, exercise);
+    showResult(formatProductionFeedback(exercise, step, result), step, exercise);
+  }
+
+  function formatProductionFeedback(exercise, step, result) {
+    if (result.pass || exercise.id !== "production" || !["table", "minimized"].includes(step.type)) return result;
+    const detailedIssues = result.issues.join("\n");
+    const issues = [];
+    if (/条件をすべて|条件の組み合わせ|同じ条件の組み合わせ|全ての条件の組み合わせ/.test(detailedIssues)) {
+      issues.push(step.type === "table"
+        ? "全16通りの条件の組み合わせを、重複・漏れなく1列ずつ作れているか確認してください。"
+        : "条件を「−」にした列を含め、全16通りを重複・漏れなく覆えているか確認してください。");
+    }
+    if (/アクション|Xを1つ|N\/A/.test(detailedIssues)) {
+      issues.push("各条件の組み合わせに対する結果を、仕様の権限ルールと照らして見直してください。");
+    }
+    if (!issues.length) issues.push("仕様と表を見比べ、条件・結果・列数を見直してください。");
+    return { ...result, issues };
+  }
+
+  function renderMinimizedReference(exercise) {
+    const rows = exercise.minimizedExample.map((column, index) => {
+      const conditions = column.conditions.map((value, conditionIndex) => `${escapeHtml(exercise.conditions[conditionIndex])}：${value}`).join("<br>");
+      const outcome = column.result === "NA" ? "実行不可能（N/A）" : escapeHtml(exercise.actions[column.result]);
+      return `<tr><th scope="row">${index + 1}</th><td>${conditions}</td><td>${outcome}</td></tr>`;
+    }).join("");
+    return `<div class="reference-answer minimized-reference"><strong>最小化の解答例（列順は任意）</strong>
+      <p>下の6列は解答の一例です。条件が「−」の箇所は、TでもFでも結果が変わらないことを表します。</p>
+      <div class="reference-table-wrap"><table class="reference-table"><thead><tr><th>列</th><th>条件</th><th>結果</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <p>自動検算では、この6列を全16通りへ展開し、各組み合わせの結果が仕様どおりかを確認しています。</p>
+    </div>`;
   }
 
   function showResult(result, step, exercise) {
@@ -517,10 +559,13 @@
     const quizAnswers = result.pass && step.type === "quiz" ? step.questions.map((question, index) => `
       <div><dt>問${index + 1}</dt><dd><strong>${escapeHtml(question.options[question.answer])}</strong><p>${escapeHtml(question.explanation)}</p></dd></div>
     `).join("") : "";
+    const minimizedReference = result.pass && step.type === "minimized" ? renderMinimizedReference(exercise) : "";
     const answerBlock = quizAnswers
       ? `<div class="reference-answer"><strong>理解度チェックの解答</strong><dl class="quiz-answer-list">${quizAnswers}</dl></div>`
       : fieldAnswers
       ? `<div class="reference-answer"><strong>入力欄ごとの解答</strong><dl class="answer-list">${fieldAnswers}</dl></div>`
+      : minimizedReference
+      ? minimizedReference
       : (reference ? `<div class="reference-answer"><strong>解答例・解説</strong><p>${escapeHtml(reference)}</p></div>` : "");
     elements.resultContent.innerHTML = `
       <div class="result-icon ${result.pass ? "pass" : "retry"}">${result.pass ? "✓" : "!"}</div>
