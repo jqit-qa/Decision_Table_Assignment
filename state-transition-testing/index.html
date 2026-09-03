@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>テスト技法トレーニング</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar"><strong id="appTitle">テスト技法トレーニング</strong><span id="saveStatus">自動保存</span></header>
+  <main>
+    <nav id="exerciseNav" class="exercise-nav" aria-label="問題一覧"></nav>
+    <section class="panel" id="specification">
+      <p class="eyebrow" id="sectionLabel"></p>
+      <h1 id="exerciseTitle"></h1>
+      <p id="learningGoal" class="goal"></p>
+      <h2>仕様</h2>
+      <ol id="specList" class="spec-list"></ol>
+    </section>
+    <section class="panel" id="assignment">
+      <div class="section-head"><div><p class="eyebrow">問題・解答</p><h2>問題</h2></div><span id="progressLabel"></span></div>
+      <div id="stepTabs" class="step-tabs" role="tablist"></div>
+      <div id="answerArea"></div>
+      <div class="actions"><button id="resetButton" class="button secondary" type="button">入力をリセット</button><button id="checkButton" class="button primary" type="button">答え合わせ</button></div>
+    </section>
+    <p class="disclaimer">この教材は自己学習用です。正答と採点処理はブラウザに配信されるため、秘密試験には使用できません。</p>
+  </main>
+  <dialog id="resultDialog" class="dialog"><div id="resultContent"></div><form method="dialog"><button class="button primary">閉じる</button></form></dialog>
+  <script src="data.js"></script>
+  <script src="validator.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
