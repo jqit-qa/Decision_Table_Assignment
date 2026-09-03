@@ -29,6 +29,9 @@
   function step() { return exercise().steps[state.activeStep] || exercise().steps[0]; }
   function answer() { state.answers[exercise().id] ||= {}; state.answers[exercise().id][step().id] ||= { value: "", values: [], fields: {}, rows: [] }; return state.answers[exercise().id][step().id]; }
   function key() { return `${exercise().id}:${step().id}`; }
+  function isStepUnlocked(index) { return exercise().steps.slice(0, index).every((current) => state.completed.includes(`${exercise().id}:${current.id}`)) || Boolean(state.answers[exercise().id]?.[exercise().steps[index]?.id]); }
+  function isExerciseUnlocked(index) { return exercises.slice(0, index).every((entry) => entry.steps.every((current) => state.completed.includes(`${entry.id}:${current.id}`))) || Boolean(Object.keys(state.answers[exercises[index]?.id] || {}).length); }
+  function invalidateFrom(index) { const active = exercise(); const invalid = active.steps.slice(index).map((current) => `${active.id}:${current.id}`); state.completed = state.completed.filter((item) => !invalid.includes(item)); }
   function esc(value) { return String(value ?? "").replace(/[&<>\"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
   function attrs(value) { return esc(value); }
 
@@ -47,9 +50,10 @@
     el.nav.innerHTML = exercises.map((entry, index) => {
       const done = entry.steps.filter((current) => state.completed.includes(`${entry.id}:${current.id}`)).length;
       const complete = done === entry.steps.length;
-      return `<button class="course-button ${entry.id === item.id ? "active" : ""}" type="button" data-exercise="${attrs(entry.id)}"><span class="course-index">${String(index + 1).padStart(2, "0")}</span><span><strong>${esc(entry.navTitle)}</strong><small>${done} / ${entry.steps.length} ステップ</small></span><span class="course-state ${complete ? "complete" : ""}" aria-label="${complete ? "完了" : "未完了"}"></span></button>`;
+      const navLabel = entry.id === "production" ? "本番問題" : `練習問題${index === 0 ? "①" : "②"}`;
+      const unlocked = isExerciseUnlocked(index); return `<button class="course-button ${entry.id === item.id ? "active" : ""}" type="button" data-exercise="${attrs(entry.id)}" ${unlocked ? "" : "disabled"}><span class="course-index">${String(index + 1).padStart(2, "0")}</span><span class="course-copy"><strong>${navLabel}</strong><small><span>${esc(entry.navTitle)}</span><b>${done} / ${entry.steps.length} ステップ</b></small></span><span class="course-state ${complete ? "complete" : ""}" aria-label="${complete ? "完了" : "未完了"}"></span></button>`;
     }).join("");
-    el.tabs.innerHTML = item.steps.map((current, index) => `<button class="step-tab ${state.completed.includes(`${item.id}:${current.id}`) ? "complete" : ""}" type="button" role="tab" aria-selected="${index === state.activeStep}" data-step="${index}">${state.completed.includes(`${item.id}:${current.id}`) ? "✓" : `${index + 1}.`} ${esc(current.label)}</button>`).join("");
+    el.tabs.innerHTML = item.steps.map((current, index) => `<button class="step-tab ${state.completed.includes(`${item.id}:${current.id}`) ? "complete" : ""}" type="button" role="tab" aria-selected="${index === state.activeStep}" data-step="${index}" ${isStepUnlocked(index) ? "" : "disabled"}>${state.completed.includes(`${item.id}:${current.id}`) ? "✓" : `${index + 1}.`} ${esc(current.label)}</button>`).join("");
     renderAnswer();
     renderProgress();
   }
@@ -132,8 +136,8 @@
     el.dialog.showModal();
   }
 
-  el.nav.addEventListener("click", (event) => { const button = event.target.closest("[data-exercise]"); if (!button) return; state.activeExerciseId = button.dataset.exercise; state.activeStep = 0; save(); render(); });
-  el.tabs.addEventListener("click", (event) => { const button = event.target.closest("[data-step]"); if (!button) return; state.activeStep = Number(button.dataset.step); save(); render(); });
+  el.nav.addEventListener("click", (event) => { const button = event.target.closest("[data-exercise]"); if (!button) return; const index = exercises.findIndex((entry) => entry.id === button.dataset.exercise); if (!isExerciseUnlocked(index)) return; state.activeExerciseId = button.dataset.exercise; state.activeStep = 0; save(); render(); });
+  el.tabs.addEventListener("click", (event) => { const button = event.target.closest("[data-step]"); if (!button || !isStepUnlocked(Number(button.dataset.step))) return; state.activeStep = Number(button.dataset.step); save(); render(); });
   el.area.addEventListener("input", (event) => {
     const a = answer(); const target = event.target;
     if (target.matches("[data-choice]")) a.value = target.value;
@@ -142,6 +146,7 @@
     if (target.dataset.quiz) a.fields[target.dataset.quiz] = target.value;
     if (target.dataset.stateCell) a.fields[target.dataset.stateCell] = target.value;
     if (target.dataset.row !== undefined) { a.rows[Number(target.dataset.row)] ||= {}; a.rows[Number(target.dataset.row)][target.dataset.cell] = target.value; }
+    invalidateFrom(state.activeStep);
     save();
     if (target.matches("[data-choice], [data-multi], [data-quiz]")) renderAnswer();
   });

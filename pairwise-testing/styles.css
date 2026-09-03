@@ -49,7 +49,7 @@ main { width: min(1320px, calc(100% - clamp(32px, 8vw, 112px))); margin: 0 auto;
 .course-button.active { border-color: var(--primary); border-left-width: 4px; background: var(--primary-soft); }
 .course-index { color: var(--primary); font: 700 20px/1 var(--font-sans); }
 .course-button strong, .course-button small { display: block; }
-.course-button small { margin-top: 5px; color: var(--muted); font-size: 11px; }
+.course-copy { min-width: 0; }.course-button small { margin-top: 5px; display: flex; gap: 8px; color: var(--muted); font-size: 11px; }.course-button small span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.course-button small b { flex: 0 0 auto; font: inherit; font-weight: 400; white-space: nowrap; }
 .course-state { margin-left: auto; width: 9px; height: 9px; flex: 0 0 auto; border: 2px solid #aab1ac; border-radius: 50%; }
 .course-state.complete { border-color: var(--accent); background: var(--accent); }
 
