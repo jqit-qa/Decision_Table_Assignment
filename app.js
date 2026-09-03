@@ -1,17 +1,17 @@
 (() => {
   "use strict";
 
-  const STORAGE_KEY = "decision-table-lab-rev3-state-v5";
+  const STORAGE_KEY = "decision-table-lab-rev3-state-v6";
   const exercises = window.DT_EXERCISES;
   const validator = window.DT_VALIDATOR;
   const cellCycles = {
     fullCondition: ["", "T", "F"],
     minimizedCondition: ["", "T", "F", "-"],
     action: ["", "X"],
-    actionWithNA: ["", "X", "NA"]
+    actionWithNA: ["", "X"]
   };
 
-  const defaultState = { version: 5, activeExerciseId: exercises[0].id, activeStep: 0, answers: {}, completed: [] };
+  const defaultState = { version: 6, activeExerciseId: exercises[0].id, activeStep: 0, answers: {}, completed: [] };
   let state = loadState();
   let guideIndex = 0;
   const guideCaptions = ["① 問題を選ぶ", "② 仕様を読む", "③ 回答を入力する", "④ 答え合わせをする", "⑤ 本番問題のみ：理解度チェック"];
@@ -39,6 +39,7 @@
     checkButton: document.querySelector("#checkButton"),
     resultDialog: document.querySelector("#resultDialog"),
     resultContent: document.querySelector("#resultContent"),
+    resultNext: document.querySelector("#resultNext"),
     saveStatus: document.querySelector("#saveStatus"),
     progressRing: document.querySelector("#progressRing"),
     progressPercent: document.querySelector("#progressPercent"),
@@ -48,7 +49,7 @@
   function loadState() {
     try {
       const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
-      if (!parsed || parsed.version !== 5 || !exercises.some((exercise) => exercise.id === parsed.activeExerciseId)) return structuredClone(defaultState);
+      if (!parsed || parsed.version !== 6 || !exercises.some((exercise) => exercise.id === parsed.activeExerciseId)) return structuredClone(defaultState);
       return { ...structuredClone(defaultState), ...parsed };
     } catch (_) {
       return structuredClone(defaultState);
@@ -98,6 +99,26 @@
     return `${exercise.id}:${step.id}`;
   }
 
+  function isStepUnlocked(exercise, stepIndex) {
+    return exercise.steps.slice(0, stepIndex).every((step) => state.completed.includes(`${exercise.id}:${step.id}`));
+  }
+
+  function isExerciseUnlocked(exerciseIndex) {
+    return exercises.slice(0, exerciseIndex).every((exercise) => exercise.steps.every((step) => state.completed.includes(`${exercise.id}:${step.id}`)));
+  }
+
+  function invalidateFrom(exercise, stepIndex) {
+    const invalidKeys = exercise.steps.slice(stepIndex).map((step) => `${exercise.id}:${step.id}`);
+    state.completed = state.completed.filter((key) => !invalidKeys.includes(key));
+  }
+
+  function nextTarget(exercise, stepIndex) {
+    if (stepIndex + 1 < exercise.steps.length) return { exerciseId: exercise.id, stepIndex: stepIndex + 1, label: "次のステップへ" };
+    const exerciseIndex = exercises.findIndex((item) => item.id === exercise.id);
+    if (exerciseIndex + 1 < exercises.length) return { exerciseId: exercises[exerciseIndex + 1].id, stepIndex: 0, label: "次の問題へ" };
+    return null;
+  }
+
   function blankColumn(exercise) {
     return {
       conditions: Array(exercise.conditions.length).fill(""),
@@ -128,12 +149,13 @@
   }
 
   function renderNavigation() {
-    elements.courseNav.innerHTML = exercises.map((exercise) => {
+    elements.courseNav.innerHTML = exercises.map((exercise, exerciseIndex) => {
       const exerciseSteps = exercise.steps.map((step) => `${exercise.id}:${step.id}`);
       const completeCount = exerciseSteps.filter((key) => state.completed.includes(key)).length;
       const isComplete = completeCount === exercise.steps.length;
+      const unlocked = isExerciseUnlocked(exerciseIndex);
       return `
-        <button class="course-button ${exercise.id === state.activeExerciseId ? "active" : ""}" type="button" data-exercise="${exercise.id}">
+        <button class="course-button ${exercise.id === state.activeExerciseId ? "active" : ""} ${unlocked ? "" : "locked"}" type="button" data-exercise="${exercise.id}" ${unlocked ? "" : "disabled title=\"前の問題を完了すると開始できます\""}>
           <span class="course-index">${exercise.number}</span>
           <span><strong>${exercise.navTitle}</strong><small>${completeCount} / ${exercise.steps.length} ステップ</small></span>
           <span class="course-state ${isComplete ? "complete" : ""}" aria-label="${isComplete ? "完了" : "未完了"}"></span>
@@ -156,7 +178,8 @@
     elements.naLegend.hidden = !exercise.fullColumns.some((column) => column.result === "NA");
     elements.stepTabs.innerHTML = exercise.steps.map((item, index) => {
       const complete = state.completed.includes(`${exercise.id}:${item.id}`);
-      return `<button class="step-tab ${complete ? "complete" : ""}" type="button" role="tab" aria-selected="${index === state.activeStep}" data-step="${index}">${complete ? "✓" : index + 1 + "."} ${item.label}</button>`;
+      const unlocked = isStepUnlocked(exercise, index);
+      return `<button class="step-tab ${complete ? "complete" : ""} ${unlocked ? "" : "locked"}" type="button" role="tab" aria-selected="${index === state.activeStep}" data-step="${index}" ${unlocked ? "" : "disabled title=\"前のステップを完了すると開始できます\""}>${complete ? "✓" : index + 1 + "."} ${item.label}</button>`;
     }).join("");
     renderAnswerArea(step, exercise);
     renderNavigation();
@@ -210,9 +233,11 @@
 
   function renderDecisionTable(exercise, step, columns, selectedColumns = []) {
     const isMinimized = step.type === "minimized";
+    const hasNA = exercise.fullColumns.some((column) => column.result === "NA");
     const header = columns.map((_, index) => {
       const isSelected = selectedColumns.includes(index);
-      return `<th scope="col" class="${isSelected ? "column-is-selected" : ""}"><span>${index + 1}</span>${isMinimized ? `
+      const isNA = columns[index].actions.some((action) => action === "NA");
+      return `<th scope="col" class="${isSelected ? "column-is-selected" : ""} ${isNA ? "column-is-na" : ""}"><span>${index + 1}</span>${hasNA ? `<button class="column-na ${isNA ? "selected" : ""}" type="button" data-mark-na="${index}" aria-pressed="${isNA}" aria-label="列${index + 1}を実行不可能にする">N/A</button>` : ""}${isMinimized ? `
         <button class="column-select ${isSelected ? "selected" : ""}" type="button" data-select-column="${index}" aria-pressed="${isSelected}" aria-label="列${index + 1}を統合対象として選択">${isSelected ? "✓" : "○"}</button>
         <button class="column-delete" type="button" data-delete-column="${index}" aria-label="列${index + 1}を削除">×</button>` : ""}</th>`;
     }).join("");
@@ -222,7 +247,7 @@
     const actionRows = exercise.actions.map((label, rowIndex) => `
       <tr class="action-row"><th scope="row"><small>アクション</small>${escapeHtml(label)}</th>${columns.map((column, columnIndex) => renderCell(column.actions[rowIndex], "action", rowIndex, columnIndex, isMinimized)).join("")}</tr>`).join("");
     const scrollHint = columns.length > 8 ? " ／ 表は左右にスクロールできます" : "";
-    const actionHint = exercise.fullColumns.some((column) => column.result === "NA") ? "X → N/A" : "X";
+    const actionHint = hasNA ? "アクションはX ／ 実行不可能は列上部のN/A" : "アクションはX";
     return `<div class="table-help"><span>セルをクリックして入力を切り替えます</span><span>${isMinimized ? "T → F → −" : "T → F"} ／ ${actionHint}${scrollHint}</span></div>
       <div class="decision-table-wrap" role="region" aria-label="デシジョンテーブル（横スクロール可能）" tabindex="0"><table class="decision-table" style="--table-min-width:${210 + columns.length * 56}px;--table-mobile-min-width:${150 + columns.length * 52}px">${columnSizes}<thead><tr><th scope="col">項目</th>${header}</tr></thead><tbody>${conditionRows}${actionRows}</tbody></table></div>`;
   }
@@ -308,12 +333,44 @@
   }
 
   function renderQuiz(step, values) {
-    return `<div class="quiz-list">${step.questions.map((question, questionIndex) => {
+    const notificationField = step.notification ? `<label class="notification-name form-field"><span>受講者名（リーダー通知に表示）</span><input type="text" data-field="learnerName" value="${escapeHtml(values.learnerName ?? "")}" placeholder="例：山田 太郎" autocomplete="name" /></label>` : "";
+    return `${notificationField}<div class="quiz-list">${step.questions.map((question, questionIndex) => {
       const selected = Number(values[question.id]);
       return `<fieldset class="quiz-question"><legend><span>問${questionIndex + 1}</span>${escapeHtml(question.text)}</legend><div class="quiz-options">${question.options.map((option, optionIndex) => `
         <label class="quiz-option ${selected === optionIndex ? "selected" : ""}"><input type="radio" name="${question.id}" data-field="${question.id}" value="${optionIndex}" ${selected === optionIndex ? "checked" : ""} /><span>${escapeHtml(option)}</span></label>
       `).join("")}</div></fieldset>`;
     }).join("")}</div>`;
+  }
+
+  function createAttemptId() {
+    if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+    return `dt-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  async function sendCompletionNotification(step, answer) {
+    if (!step.notification || answer.fields.notificationSent) return;
+    answer.fields.notificationAttemptId ||= createAttemptId();
+    const status = elements.resultContent.querySelector("#notificationStatus");
+    if (status) status.textContent = "リーダーへ完了通知を送信しています…";
+    try {
+      await fetch(step.notification.url, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
+        body: JSON.stringify({
+          source: step.notification.source,
+          event: step.notification.event,
+          name: answer.fields.learnerName.trim(),
+          attemptId: answer.fields.notificationAttemptId,
+          correct: step.questions.length
+        })
+      });
+      answer.fields.notificationSent = true;
+      saveState();
+      if (status) status.textContent = "リーダーへの完了通知を送信しました。Slack側で受信を確認してください。";
+    } catch (_) {
+      if (status) status.textContent = "通知を送信できませんでした。完了画面をリーダーへ提示してください。";
+    }
   }
 
   function handleCellClick(button) {
@@ -322,17 +379,29 @@
     const row = Number(button.dataset.row);
     const kind = button.dataset.cellKind;
     const values = kind === "condition" ? column.conditions : column.actions;
+    if (kind === "action" && column.actions.some((value) => value === "NA")) values.fill("");
     const cycle = kind === "condition"
       ? (button.dataset.minimized === "true" ? cellCycles.minimizedCondition : cellCycles.fullCondition)
       : (activeExercise().fullColumns.some((column) => column.result === "NA") ? cellCycles.actionWithNA : cellCycles.action);
     values[row] = cycle[(cycle.indexOf(values[row]) + 1) % cycle.length];
-    if (activeStep().type === "minimized") invalidateMinimizedProgress(activeExercise());
+    invalidateFrom(activeExercise(), state.activeStep);
+    saveState();
+    renderAnswerArea(activeStep(), activeExercise());
+  }
+
+  function markColumnAsNA(columnIndex) {
+    const answer = getAnswer();
+    const column = answer.columns[columnIndex];
+    const isNA = column.actions.some((value) => value === "NA");
+    column.actions.fill("");
+    if (!isNA) column.actions[0] = "NA";
+    invalidateFrom(activeExercise(), state.activeStep);
     saveState();
     renderAnswerArea(activeStep(), activeExercise());
   }
 
   function invalidateMinimizedProgress(exercise) {
-    state.completed = state.completed.filter((key) => ![`${exercise.id}:min`, `${exercise.id}:count`, `${exercise.id}:coverage`, `${exercise.id}:reflection`, `${exercise.id}:quiz`].includes(key));
+    invalidateFrom(exercise, exercise.steps.findIndex((step) => step.id === "min"));
     if (state.answers[exercise.id]) delete state.answers[exercise.id].count;
   }
 
@@ -411,6 +480,9 @@
       result = validator.validateCoverageChoice(step, answer.fields.denominator);
     } else if (step.type === "quiz") {
       result = validator.validateQuiz(step, answer.fields);
+      if (step.notification && !String(answer.fields.learnerName || "").trim()) {
+        result = { pass: false, issues: [...result.issues, "リーダー通知に表示する受講者名を入力してください。"] };
+      }
     } else if (step.type === "ruleCount") {
       const columns = usedMinimizedColumns(exercise);
       const issues = [];
@@ -443,7 +515,7 @@
     const fieldAnswers = (step.fields || []).filter((field) => field.answerDisplay).map((field) => `
       <div><dt>${escapeHtml(field.label)}</dt><dd>${escapeHtml(field.answerDisplay)}</dd></div>
     `).join("");
-    const quizAnswers = step.type === "quiz" ? step.questions.map((question, index) => `
+    const quizAnswers = result.pass && step.type === "quiz" ? step.questions.map((question, index) => `
       <div><dt>問${index + 1}</dt><dd><strong>${escapeHtml(question.options[question.answer])}</strong><p>${escapeHtml(question.explanation)}</p></dd></div>
     `).join("") : "";
     const answerBlock = quizAnswers
@@ -457,8 +529,14 @@
       <h2>${result.pass ? "正しくできています" : "もう一度確認しましょう"}</h2>
       ${result.issues.length ? `<ul class="issue-list">${result.issues.slice(0, 8).map((issue) => `<li>${escapeHtml(issue)}</li>`).join("")}</ul>` : ""}
       ${answerBlock}
+      ${!result.pass && step.type === "quiz" ? "<p class=\"result-tip\">正しい選択肢と解説は、全問正解したあとに表示されます。まずは問題文とヒントを見直してください。</p>" : ""}
+      ${result.pass && step.notification ? "<p class=\"result-tip notification-status\" id=\"notificationStatus\">リーダーへの完了通知を準備しています…</p>" : ""}
       ${result.pass && exercise.explanations ? `<p class="result-tip">${escapeHtml(exercise.explanations[Math.min(state.activeStep, exercise.explanations.length - 1)])}</p>` : ""}`;
+    const next = result.pass ? nextTarget(exercise, state.activeStep) : null;
+    elements.resultNext.hidden = !next;
+    if (next) elements.resultNext.textContent = next.label;
     elements.resultDialog.showModal();
+    if (result.pass && step.notification) sendCompletionNotification(step, getAnswer(exercise, step));
     renderExercise();
   }
 
@@ -474,6 +552,8 @@
   elements.courseNav.addEventListener("click", (event) => {
     const button = event.target.closest("[data-exercise]");
     if (!button) return;
+    const exerciseIndex = exercises.findIndex((exercise) => exercise.id === button.dataset.exercise);
+    if (!isExerciseUnlocked(exerciseIndex)) return;
     state.activeExerciseId = button.dataset.exercise;
     state.activeStep = 0;
     saveState();
@@ -484,12 +564,19 @@
   elements.stepTabs.addEventListener("click", (event) => {
     const button = event.target.closest("[data-step]");
     if (!button) return;
-    state.activeStep = Number(button.dataset.step);
+    const stepIndex = Number(button.dataset.step);
+    if (!isStepUnlocked(activeExercise(), stepIndex)) return;
+    state.activeStep = stepIndex;
     saveState();
     renderExercise();
   });
 
   elements.answerArea.addEventListener("click", (event) => {
+    const markNA = event.target.closest("[data-mark-na]");
+    if (markNA) {
+      markColumnAsNA(Number(markNA.dataset.markNa));
+      return;
+    }
     const selectColumn = event.target.closest("[data-select-column]");
     if (selectColumn) {
       handleMinimizedAction("select", Number(selectColumn.dataset.selectColumn));
@@ -509,7 +596,9 @@
     if (cell) handleCellClick(cell);
     const jump = event.target.closest("[data-go-step]");
     if (jump) {
-      state.activeStep = activeExercise().steps.findIndex((step) => step.id === jump.dataset.goStep);
+      const stepIndex = activeExercise().steps.findIndex((step) => step.id === jump.dataset.goStep);
+      if (!isStepUnlocked(activeExercise(), stepIndex)) return;
+      state.activeStep = stepIndex;
       saveState();
       renderExercise();
     }
@@ -521,6 +610,7 @@
     const answer = getAnswer();
     if (field) answer.fields[field] = event.target.value;
     if (count !== undefined) answer.counts[count] = event.target.value;
+    if (field || count !== undefined) invalidateFrom(activeExercise(), state.activeStep);
     saveState();
     if (field === "conditions" && activeStep().type === "formula") {
       const nextGuide = document.createElement("div");
@@ -547,12 +637,22 @@
     const exercise = activeExercise();
     const step = activeStep();
     delete state.answers[exercise.id]?.[step.id];
-    state.completed = state.completed.filter((key) => key !== answerKey(exercise, step));
+    invalidateFrom(exercise, state.activeStep);
     saveState();
     renderExercise();
   });
 
   elements.checkButton.addEventListener("click", validateCurrentStep);
+  elements.resultNext.addEventListener("click", () => {
+    const target = nextTarget(activeExercise(), state.activeStep);
+    if (!target) return;
+    state.activeExerciseId = target.exerciseId;
+    state.activeStep = target.stepIndex;
+    saveState();
+    elements.resultDialog.close();
+    renderExercise();
+    document.querySelector("#assignment").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
   elements.helpButton.addEventListener("click", () => {
     renderGuide(0);
     elements.helpDialog.showModal();

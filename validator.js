@@ -26,10 +26,25 @@
   function validateFullTable(exercise, columns) {
     const issues = [];
     if (columns.length !== exercise.fullColumns.length) issues.push("列数が全組み合わせの数と一致していません。");
-    exercise.fullColumns.forEach((expected, columnIndex) => {
-      const actual = columns[columnIndex] || { conditions: [], actions: [] };
-      if (keyOf(actual.conditions) !== keyOf(expected.conditions)) issues.push(`列${columnIndex + 1}の条件の並びを確認してください。`);
-      if (deriveResult(actual.actions) !== expected.result) issues.push(`列${columnIndex + 1}のアクションを確認してください。`);
+    const expected = new Map(exercise.fullColumns.map((column) => [keyOf(column.conditions), column.result]));
+    const received = new Set();
+    columns.forEach((column, columnIndex) => {
+      const conditionKey = keyOf(column.conditions);
+      if (column.conditions.some((value) => !["T", "F"].includes(value))) {
+        issues.push(`列${columnIndex + 1}の条件をすべてT/Fで入力してください。`);
+        return;
+      }
+      if (!expected.has(conditionKey)) {
+        issues.push(`列${columnIndex + 1}の条件の組み合わせを確認してください。`);
+        return;
+      }
+      if (received.has(conditionKey)) issues.push(`列${columnIndex + 1}は、ほかの列と同じ条件の組み合わせです。`);
+      received.add(conditionKey);
+      const result = deriveResult(column.actions);
+      if (result !== expected.get(conditionKey)) issues.push(`列${columnIndex + 1}のアクションを確認してください。`);
+    });
+    expected.forEach((_, conditionKey) => {
+      if (!received.has(conditionKey)) issues.push("全ての条件の組み合わせを1回ずつ入力してください。");
     });
     return { pass: issues.length === 0, issues: [...new Set(issues)] };
   }

@@ -98,7 +98,10 @@
 
     <dialog id="resultDialog" class="dialog">
       <div id="resultContent"></div>
-      <form method="dialog"><button class="button button-primary" type="submit">解答に戻る</button></form>
+      <div class="result-actions">
+        <form method="dialog"><button class="button button-ghost" type="submit">解答を確認する</button></form>
+        <button class="button button-primary" id="resultNext" type="button" hidden>次のステップへ</button>
+      </div>
     </dialog>
 
     <dialog id="helpDialog" class="dialog help-dialog" aria-labelledby="helpTitle">

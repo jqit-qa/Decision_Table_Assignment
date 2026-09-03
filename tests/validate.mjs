@@ -26,6 +26,7 @@ function toAnswerColumns(exercise, sourceColumns, total = sourceColumns.length) 
 for (const exercise of exercises) {
   const full = toAnswerColumns(exercise, exercise.fullColumns);
   assert.equal(validator.validateFullTable(exercise, full).pass, true, `${exercise.id}: 完全表の正解を受理`);
+  assert.equal(validator.validateFullTable(exercise, [...full].reverse()).pass, true, `${exercise.id}: 完全表は列順が違っても受理`);
   full[0].conditions[0] = full[0].conditions[0] === "T" ? "F" : "T";
   assert.equal(validator.validateFullTable(exercise, full).pass, false, `${exercise.id}: 条件誤りを検出`);
 
@@ -91,6 +92,7 @@ assert.equal(validator.validateCoverageChoice(productionCoverage, 6).pass, false
 const quiz = production.steps.find((step) => step.type === "quiz");
 assert.equal(quiz.questions.length, 4, "理解度チェックは4問あること");
 assert.ok(quiz.questions.every((question) => question.options.length === 4), "各問が4択であること");
+assert.equal(quiz.notification.event, "production_quiz_completed", "本番の理解度チェックだけが完了通知を送ること");
 const correctQuizAnswers = Object.fromEntries(quiz.questions.map((question) => [question.id, String(question.answer)]));
 assert.equal(validator.validateQuiz(quiz, correctQuizAnswers).pass, true, "理解度チェックの正答を受理");
 assert.equal(validator.validateQuiz(quiz, { ...correctQuizAnswers, q1: "0" }).pass, false, "理解度チェックの誤答を検出");
@@ -110,7 +112,7 @@ assert.ok(html.includes('id="helpButton"') && html.includes(">使い方</button>
 assert.equal((html.match(/data-guide-scene=/g) || []).length, 5, "操作デモが5場面あること");
 assert.equal((html.match(/data-guide-step=/g) || []).length, 5, "操作手順が5段階で説明されること");
 assert.ok(html.includes("練習問題から本番問題まで進めてください"), "練習問題から本番問題へ進む流れを案内すること");
-assert.ok(html.includes("理解度チェックに全問正解すると、リーダーへ完了通知"), "完了通知の条件を明記すること");
+assert.ok(html.includes("理解度チェックに全問正解すると、リーダーへ完了通知"), "理解度チェック全問正解時の通知条件を案内すること");
 assert.ok(html.includes("本番問題の最後に実施します") && html.includes("本番問題のみ"), "理解度チェックが本番問題だけであると明記すること");
 for (const control of ["guidePrev", "guideReplay", "guideNext"]) {
   assert.ok(html.includes(`id="${control}"`), `${control}: 操作デモを手動操作できること`);
@@ -126,10 +128,15 @@ assert.ok(appSource.includes('data-min-action="add"'), "列追加操作がある
 assert.ok(appSource.includes('data-min-action="merge"'), "選択した2列の統合操作があること");
 assert.ok(appSource.includes("data-select-column"), "統合対象の列選択操作があること");
 assert.ok(appSource.includes("data-delete-column"), "列削除操作があること");
-assert.ok(appSource.includes("actionWithNA"), "N/Aが必要な問題だけ選択できること");
-assert.ok(appSource.includes("decision-table-lab-rev3-state-v5"), "本番の新しいタブ構造に古い保存状態を持ち込まないこと");
+assert.ok(appSource.includes("data-mark-na"), "実行不可能な列を専用操作で指定できること");
+assert.ok(appSource.includes("decision-table-lab-rev3-state-v6"), "完了状態の仕様変更に古い保存状態を持ち込まないこと");
 assert.ok(appSource.includes("coverageChoice"), "選択式カバレッジ画面を扱うこと");
 assert.ok(appSource.includes("renderQuiz"), "4択の理解度チェック画面を扱うこと");
+assert.ok(appSource.includes("invalidateFrom"), "入力変更時に後続の完了状態を解除すること");
+assert.ok(appSource.includes("isStepUnlocked"), "前工程を完了するまで後続ステップを開始できないこと");
+assert.ok(appSource.includes("resultNext"), "正解後に次へ進む導線があること");
+assert.match(appSource, /result\.pass && step\.type === "quiz"/, "理解度チェックの正答・解説は合格後にだけ表示すること");
+assert.ok(appSource.includes("sendCompletionNotification"), "理解度チェック全問正解時に通知を送ること");
 assert.ok(!appSource.includes("setInterval"), "操作デモを自動送りしないこと");
 assert.ok(appSource.includes('querySelectorAll("[data-guide-step]")'), "見たい手順を直接選べること");
 assert.ok(cssSource.includes("prefers-reduced-motion: reduce"), "動きを抑える端末設定に対応すること");
