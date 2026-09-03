@@ -129,6 +129,7 @@ assert.match(cssSource, /\.table-cell\s*\{[^}]*min-width:\s*0;/s, "T/F入力が�
 assert.ok(appSource.includes('data-min-action="copy"'), "全組み合わせ表のコピー操作があること");
 assert.ok(appSource.includes('data-min-action="add"'), "列追加操作があること");
 assert.ok(appSource.includes('data-min-action="merge"'), "選択した2列の統合操作があること");
+assert.ok(appSource.includes('data-min-action="undo"') && appSource.includes("直前の操作に戻しました"), "統合順で行き詰まった場合に直前の操作を戻せること");
 assert.ok(appSource.includes("AがTでもFでも結果は変わらないため"), "最小化でハイフンにできる理由を説明すること");
 assert.ok(appSource.includes("data-select-column"), "統合対象の列選択操作があること");
 assert.ok(appSource.includes("data-delete-column"), "列削除操作があること");
@@ -145,6 +146,8 @@ assert.ok(appSource.includes("○の選択は統合候補を示すだけで、�
 assert.ok(appSource.includes("resultNext"), "正解後に次へ進む導線があること");
 assert.ok(appSource.includes("formatProductionFeedback"), "本番問題では列番号を示さないフィードバックにすること");
 assert.ok(appSource.includes("renderMinimizedReference") && appSource.includes("最小化の解答例（列順は任意）"), "最小化の正解後に具体的な解答例を表示すること");
+assert.ok(appSource.includes("本番問題では正解に直結する説明は表示しません"), "本番問題の不正解時は正解に直結する説明を隠すこと");
+assert.ok(appSource.includes('!result.pass && exercise.id === "production"\n        ? ""'), "本番問題の不正解時は解答例・解説を表示しないこと");
 assert.match(cssSource, /\.reference-table\s*\{[^}]*min-width:\s*520px;/s, "最小化の解答例を横スクロール可能な表で表示すること");
 assert.ok(appSource.includes("course-copy") && appSource.includes("exercise.navLabel"), "コース選択に問題種別と学習テーマを併記すること");
 assert.match(appSource, /result\.pass && step\.type === "quiz"/, "理解度チェックの正答・解説は合格後にだけ表示すること");

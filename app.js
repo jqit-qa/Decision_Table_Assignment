@@ -280,6 +280,7 @@
     return `<div class="column-controls">
       <button class="button button-ghost" type="button" data-min-action="copy" ${canCopy ? "" : "disabled"}>全組み合わせからコピー</button>
       <button class="button button-merge" type="button" data-min-action="merge" ${selectedCount === 2 ? "" : "disabled"}>選択した2列をまとめる</button>
+      <button class="button button-ghost" type="button" data-min-action="undo" ${(answer.history || []).length ? "" : "disabled"}>直前の統合を戻す</button>
       <button class="button button-ghost" type="button" data-min-action="add" ${columns.length >= step.columns ? "disabled" : ""}>＋ 列を追加</button>
       <span>${selectedCount}列選択中 ／ 現在${columns.length}列</span>
       ${canCopy ? "" : "<small>先に「全組み合わせ」で正解するとコピーできます。</small>"}
@@ -418,15 +419,30 @@
     const answer = getAnswer();
     if (step.type !== "minimized") return;
 
+    if (action === "undo") {
+      const previous = answer.history?.pop();
+      if (!previous) return;
+      answer.columns = previous.columns;
+      answer.selectedColumns = previous.selectedColumns;
+      answer.mergeMessage = "直前の操作に戻しました。";
+      invalidateMinimizedProgress(exercise);
+      saveState();
+      renderAnswerArea(step, exercise);
+      return;
+    }
+
     if (action === "copy") {
       if (!state.completed.includes(`${exercise.id}:full`)) return;
       const hasInput = answer.columns.some((column) => column.conditions.some(Boolean) || column.actions.some(Boolean));
       if (hasInput && !window.confirm("現在の最小化表を、全組み合わせ表で置き換えますか？")) return;
+      answer.history = [];
       answer.columns = structuredClone(state.answers[exercise.id].full.columns);
       answer.selectedColumns = [];
       answer.mergeMessage = "コピーしました。まとめたい2列の○を押してください。";
     } else if (action === "add") {
       if (answer.columns.length >= step.columns) return;
+      answer.history ||= [];
+      answer.history.push(structuredClone({ columns: answer.columns, selectedColumns: answer.selectedColumns || [] }));
       answer.columns.push(blankColumn(exercise));
       answer.mergeMessage = "";
     } else if (action === "select") {
@@ -452,11 +468,15 @@
         renderAnswerArea(step, exercise);
         return;
       }
+      answer.history ||= [];
+      answer.history.push(structuredClone({ columns: answer.columns, selectedColumns: answer.selectedColumns || [] }));
       answer.columns[firstIndex] = mergeResult.column;
       answer.columns.splice(secondIndex, 1);
       answer.selectedColumns = [];
       answer.mergeMessage = `2列をまとめました。条件「${exercise.conditions[mergeResult.differenceIndex]}」を「−」にしています。`;
     } else if (action === "delete") {
+      answer.history ||= [];
+      answer.history.push(structuredClone({ columns: answer.columns, selectedColumns: answer.selectedColumns || [] }));
       if (answer.columns.length === 1) {
         answer.columns[0] = blankColumn(exercise);
       } else {
@@ -519,7 +539,10 @@
   }
 
   function formatProductionFeedback(exercise, step, result) {
-    if (result.pass || exercise.id !== "production" || !["table", "minimized"].includes(step.type)) return result;
+    if (result.pass || exercise.id !== "production") return result;
+    if (!["table", "minimized"].includes(step.type)) {
+      return { ...result, issues: ["仕様と自分の入力を見比べて、計算の基準・選択した値・期待結果を見直してください。本番問題では正解に直結する説明は表示しません。"] };
+    }
     const detailedIssues = result.issues.join("\n");
     const issues = [];
     if (/条件をすべて|条件の組み合わせ|同じ条件の組み合わせ|全ての条件の組み合わせ/.test(detailedIssues)) {
@@ -552,7 +575,7 @@
     if (result.pass && !state.completed.includes(key)) state.completed.push(key);
     if (!result.pass) state.completed = state.completed.filter((item) => item !== key);
     saveState();
-    const reference = step.reference || (step.type === "minimized" ? "列順が異なっても、元の全組み合わせを漏れなく重複なく覆い、結果が一致していれば正解です。" : "");
+    const reference = step.reference || (step.type === "minimized" ? "「−」を含む各列をT/Fへ展開したとき、全16通りそれぞれに結果が1つだけ対応するかを確認します。" : "");
     const fieldAnswers = (step.fields || []).filter((field) => field.answerDisplay).map((field) => `
       <div><dt>${escapeHtml(field.label)}</dt><dd>${escapeHtml(field.answerDisplay)}</dd></div>
     `).join("");
@@ -566,7 +589,9 @@
       ? `<div class="reference-answer"><strong>入力欄ごとの解答</strong><dl class="answer-list">${fieldAnswers}</dl></div>`
       : minimizedReference
       ? minimizedReference
-      : (reference ? `<div class="reference-answer"><strong>解答例・解説</strong><p>${escapeHtml(reference)}</p></div>` : "");
+      : (!result.pass && exercise.id === "production"
+        ? ""
+        : (reference ? `<div class="reference-answer"><strong>解答例・解説</strong><p>${escapeHtml(reference)}</p></div>` : ""));
     elements.resultContent.innerHTML = `
       <div class="result-icon ${result.pass ? "pass" : "retry"}">${result.pass ? "✓" : "!"}</div>
       <p class="eyebrow">${result.pass ? "回答完了" : "要確認"}</p>
