@@ -32,7 +32,6 @@
     helpDialog: document.querySelector("#helpDialog"),
     guideCounter: document.querySelector("#guideCounter"),
     guideCaption: document.querySelector("#guideCaption"),
-    guideReplay: document.querySelector("#guideReplay"),
     guidePrev: document.querySelector("#guidePrev"),
     guideNext: document.querySelector("#guideNext"),
     resetButton: document.querySelector("#resetButton"),
@@ -157,7 +156,7 @@
       return `
         <button class="course-button ${exercise.id === state.activeExerciseId ? "active" : ""} ${unlocked ? "" : "locked"}" type="button" data-exercise="${exercise.id}" ${unlocked ? "" : "disabled title=\"前の問題を完了すると開始できます\""}>
           <span class="course-index">${exercise.number}</span>
-          <span><strong>${exercise.navTitle}</strong><small>${completeCount} / ${exercise.steps.length} ステップ</small></span>
+          <span class="course-copy"><strong>${exercise.navLabel}</strong><small><span>${exercise.navTitle}</span><b>${completeCount} / ${exercise.steps.length} ステップ</b></small></span>
           <span class="course-state ${isComplete ? "complete" : ""}" aria-label="${isComplete ? "完了" : "未完了"}"></span>
         </button>`;
     }).join("");
@@ -237,7 +236,7 @@
     const header = columns.map((_, index) => {
       const isSelected = selectedColumns.includes(index);
       const isNA = columns[index].actions.some((action) => action === "NA");
-      return `<th scope="col" class="${isSelected ? "column-is-selected" : ""} ${isNA ? "column-is-na" : ""}"><span>${index + 1}</span>${hasNA ? `<button class="column-na ${isNA ? "selected" : ""}" type="button" data-mark-na="${index}" aria-pressed="${isNA}" aria-label="列${index + 1}を実行不可能にする">N/A</button>` : ""}${isMinimized ? `
+      return `<th scope="col" class="${isSelected ? "column-is-selected" : ""} ${isNA ? "column-is-na" : ""} ${isMinimized && hasNA ? "minimized-column-with-na" : ""}"><span>${index + 1}</span>${hasNA ? `<button class="column-na ${isNA ? "selected" : ""}" type="button" data-mark-na="${index}" aria-pressed="${isNA}" aria-label="列${index + 1}を実行不可能にする">N/A</button>` : ""}${isMinimized ? `
         <button class="column-select ${isSelected ? "selected" : ""}" type="button" data-select-column="${index}" aria-pressed="${isSelected}" aria-label="列${index + 1}を統合対象として選択">${isSelected ? "✓" : "○"}</button>
         <button class="column-delete" type="button" data-delete-column="${index}" aria-label="列${index + 1}を削除">×</button>` : ""}</th>`;
     }).join("");
@@ -622,7 +621,9 @@
     if (field === "denominator" && activeStep().type === "coverageChoice") {
       renderAnswerArea(activeStep(), activeExercise());
     }
-    if (field && activeStep().type === "quiz") {
+    // 名前の入力中に全設問を再描画すると、1文字ごとにフォーカスが外れてしまう。
+    // 再描画が必要なのは、選択状態の見た目を更新するラジオボタンだけ。
+    if (field && activeStep().type === "quiz" && event.target.type === "radio") {
       renderAnswerArea(activeStep(), activeExercise());
     }
     if (count !== undefined) {
@@ -659,7 +660,6 @@
   });
   elements.guidePrev.addEventListener("click", () => renderGuide(guideIndex - 1));
   elements.guideNext.addEventListener("click", () => renderGuide(guideIndex + 1));
-  elements.guideReplay.addEventListener("click", () => renderGuide(guideIndex));
   elements.helpDialog.querySelectorAll("[data-guide-step]").forEach((step) => {
     step.addEventListener("click", () => renderGuide(Number(step.dataset.guideStep)));
   });
