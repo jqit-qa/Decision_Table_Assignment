@@ -1,6 +1,14 @@
 (() => {
   "use strict";
-  window.TRAINING_META = { title: "境界値分析トレーニング", storageKey: "bva-training-rev1-state-v1", version: 1 };
+  window.TRAINING_META = {
+    title: "境界値分析トレーニング", displayName: "境界値分析", code: "BVA", revision: "rev1.00",
+    storageKey: "bva-training-rev1-state-v1", version: 1,
+    colors: { primary: "#1769aa", dark: "#0f4f82", soft: "#eaf3fb", accent: "#ad651e" },
+    legend: [
+      { term: "境界値", description: "パーティションの端" }, { term: "隣接値", description: "境界のすぐ隣の値" },
+      { term: "2値BVA", description: "境界ごとに2アイテム" }, { term: "3値BVA", description: "境界ごとに3アイテム" }
+    ]
+  };
   window.TRAINING_EXERCISES = [
     {
       id: "practice-1", section: "練習問題 01", navTitle: "2値BVA", title: "会員ランク判定システム", goal: "順序性のあるパーティションから内部境界を見つけ、2値BVAのアイテムを作ります。",

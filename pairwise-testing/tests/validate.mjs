@@ -8,10 +8,15 @@ vm.runInContext(fs.readFileSync("data.js", "utf8"), context);
 vm.runInContext(fs.readFileSync("validator.js", "utf8"), context);
 const exercises = context.window.TRAINING_EXERCISES;
 const validator = context.window.TRAINING_VALIDATOR;
+const meta = context.window.TRAINING_META;
 
 assert.equal(exercises.length, 3, "練習2問と本番1問が必要です");
 assert.equal(exercises.map((item) => item.section).join("|"), "練習問題 01|練習問題 02|本番問題");
-assert.ok(context.window.TRAINING_META.storageKey.includes("rev1"));
+assert.ok(meta.storageKey.includes("rev1"));
+assert.match(meta.code, /^[A-Z]{2,3}$/);
+assert.match(meta.colors.primary, /^#[0-9a-f]{6}$/i);
+assert.notEqual(meta.colors.primary.toLowerCase(), "#17643e", "デシジョンテーブルの緑とは異なる主色にします");
+assert.equal(meta.legend.length, 4);
 assert.equal(exercises.at(-1).steps.at(-1).type, "quiz");
 assert.ok(exercises.at(-1).steps.at(-1).questions.length >= 3);
 
@@ -61,9 +66,10 @@ for (const file of ["index.html", "styles.css", "app.js", "validator.js", "data.
 const html = fs.readFileSync("index.html", "utf8");
 const css = fs.readFileSync("styles.css", "utf8");
 assert.match(html, /仕様/);
-assert.match(html, /問題・解答/);
+assert.match(html, /回答/);
 assert.match(html, /自己学習用/);
 assert.doesNotMatch(html, /https?:\/\//, "静的アセットは相対パスにします");
-assert.match(css, /@media \(max-width: 600px\)[\s\S]*\.exercise-nav \{ grid-template-columns: 1fr; \}/, "モバイルでは問題ナビを1列にします");
-assert.match(css, /\.table-scroll[^}]*overflow-x: auto/, "幅広い表は表の領域内だけで横スクロールさせます");
+for (const requiredClass of ["topbar", "page-summary", "course-nav", "section-jump", "spec-panel", "answer-panel", "summary-progress"]) assert.match(html, new RegExp(`class="[^"]*${requiredClass}`), `DT共通レイアウトの${requiredClass}が必要です`);
+assert.match(css, /@media \(max-width: 980px\)[\s\S]*\.course-nav \{ grid-template-columns: 1fr; \}/, "狭い画面では問題ナビを1列にします");
+assert.match(css, /\.training-table-wrap[^}]*overflow-x: auto/, "幅広い表は表の領域内だけで横スクロールさせます");
 console.log(`validated ${exercises.length} exercises`);

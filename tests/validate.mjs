@@ -106,6 +106,15 @@ const specificationPosition = html.indexOf('id="specification"');
 const assignmentPosition = html.indexOf('id="assignment"');
 assert.ok(specificationPosition > -1 && assignmentPosition > specificationPosition, "仕様が問題・解答より先に表示されること");
 assert.ok(!html.includes("組み合わせを、"), "不要なキャッチコピーが削除されていること");
+assert.ok(html.includes('id="helpButton"') && html.includes(">使い方</button>"), "使い方の入口が文字で判別できること");
+assert.equal((html.match(/data-guide-scene=/g) || []).length, 5, "操作デモが5場面あること");
+assert.equal((html.match(/data-guide-step=/g) || []).length, 5, "操作手順が5段階で説明されること");
+assert.ok(html.includes("練習問題から本番問題まで進めてください"), "練習問題から本番問題へ進む流れを案内すること");
+assert.ok(html.includes("理解度チェックに全問正解すると、リーダーへ完了通知"), "完了通知の条件を明記すること");
+assert.ok(html.includes("本番問題の最後に実施します") && html.includes("本番問題のみ"), "理解度チェックが本番問題だけであると明記すること");
+for (const control of ["guidePrev", "guideReplay", "guideNext"]) {
+  assert.ok(html.includes(`id="${control}"`), `${control}: 操作デモを手動操作できること`);
+}
 
 const appSource = fs.readFileSync(new URL("../app.js", import.meta.url), "utf8");
 const cssSource = fs.readFileSync(new URL("../styles.css", import.meta.url), "utf8");
@@ -121,8 +130,13 @@ assert.ok(appSource.includes("actionWithNA"), "N/Aが必要な問題だけ選択
 assert.ok(appSource.includes("decision-table-lab-rev3-state-v5"), "本番の新しいタブ構造に古い保存状態を持ち込まないこと");
 assert.ok(appSource.includes("coverageChoice"), "選択式カバレッジ画面を扱うこと");
 assert.ok(appSource.includes("renderQuiz"), "4択の理解度チェック画面を扱うこと");
+assert.ok(!appSource.includes("setInterval"), "操作デモを自動送りしないこと");
+assert.ok(appSource.includes('querySelectorAll("[data-guide-step]")'), "見たい手順を直接選べること");
+assert.ok(cssSource.includes("prefers-reduced-motion: reduce"), "動きを抑える端末設定に対応すること");
 assert.ok(!/Georgia|Yu Mincho/.test(cssSource), "明朝・セリフ体を使用しないこと");
 assert.ok(cssSource.includes('--font-sans: -apple-system'), "OS標準のゴシック体スタックを使用すること");
+assert.match(cssSource, /\.guide-layout\s*\{[^}]*grid-template-columns:/s, "操作デモと手順を見比べられること");
+assert.match(cssSource, /@media \(max-width: 980px\)[\s\S]*?\.guide-layout\s*\{[^}]*grid-template-columns:\s*1fr;/, "狭い画面では使い方を1列表示すること");
 assert.ok(!/PRACTICE|FINAL ASSIGNMENT|STEP COMPLETE|CHECK AGAIN|QUESTION/.test(`${html}\n${appSource}\n${fs.readFileSync(new URL("../data.js", import.meta.url), "utf8")}`), "主要な英字ラベルを日本語化すること");
 
 console.log("Validation passed: 3 exercises, semantic table grading, coverage quiz, and assets.");

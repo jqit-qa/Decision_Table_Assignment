@@ -1,7 +1,15 @@
 (() => {
   "use strict";
   const validity = ["有効", "無効"];
-  window.TRAINING_META = { title: "同値分割法トレーニング", storageKey: "equivalence-partitioning-rev1-state-v1", version: 1 };
+  window.TRAINING_META = {
+    title: "同値分割法トレーニング", displayName: "同値分割法", code: "EP", revision: "rev1.00",
+    storageKey: "equivalence-partitioning-rev1-state-v1", version: 1,
+    colors: { primary: "#b45f18", dark: "#87440f", soft: "#fff1e5", accent: "#286c9b" },
+    legend: [
+      { term: "有効", description: "仕様で受け付ける区分" }, { term: "無効", description: "エラーとなる区分" },
+      { term: "代表値", description: "区分内部の典型値" }, { term: "イーチチョイス", description: "各区分を最低1回実施" }
+    ]
+  };
   window.TRAINING_EXERCISES = [
     {
       id: "practice-1", section: "練習問題 01", navTitle: "1項目を分割", title: "経費精算の申請金額", goal: "仕様から漏れなく重複なくパーティションを作り、区間の内側から代表値を選びます。",

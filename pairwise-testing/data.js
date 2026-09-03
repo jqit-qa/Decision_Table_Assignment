@@ -5,7 +5,15 @@
     { id: "color", label: "カラーモード", values: ["カラー", "グレースケール", "モノクロ2値"] },
     { id: "binding", label: "綴じ方向", values: ["左綴じ", "右綴じ", "上綴じ"] }
   ];
-  window.TRAINING_META = { title: "ペアワイズ／直交表トレーニング", storageKey: "pairwise-training-rev1-state-v1", version: 1 };
+  window.TRAINING_META = {
+    title: "ペアワイズ／直交表トレーニング", displayName: "ペアワイズ／直交表", code: "PW", revision: "rev1.00",
+    storageKey: "pairwise-training-rev1-state-v1", version: 1,
+    colors: { primary: "#087d72", dark: "#075c55", soft: "#e5f4f2", accent: "#a66d13" },
+    legend: [
+      { term: "因子", description: "組み合わせる設定項目" }, { term: "水準", description: "因子が取る具体的な値" },
+      { term: "禁則", description: "実行不可能な組み合わせ" }, { term: "ペア網羅", description: "全ての2因子間を最低1回実施" }
+    ]
+  };
   window.TRAINING_EXERCISES = [
     {
       id: "practice-1", section: "練習問題 01", navTitle: "全ペアを網羅", title: "帳票印刷設定", goal: "全組み合わせとの違いを理解し、全ての2因子間ペアを含む被覆表を作ります。",

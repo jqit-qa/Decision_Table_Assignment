@@ -13,6 +13,8 @@
 
   const defaultState = { version: 5, activeExerciseId: exercises[0].id, activeStep: 0, answers: {}, completed: [] };
   let state = loadState();
+  let guideIndex = 0;
+  const guideCaptions = ["① 問題を選ぶ", "② 仕様を読む", "③ 回答を入力する", "④ 答え合わせをする", "⑤ 本番問題のみ：理解度チェック"];
 
   const elements = {
     courseNav: document.querySelector("#courseNav"),
@@ -28,6 +30,11 @@
     answerArea: document.querySelector("#answerArea"),
     helpButton: document.querySelector("#helpButton"),
     helpDialog: document.querySelector("#helpDialog"),
+    guideCounter: document.querySelector("#guideCounter"),
+    guideCaption: document.querySelector("#guideCaption"),
+    guideReplay: document.querySelector("#guideReplay"),
+    guidePrev: document.querySelector("#guidePrev"),
+    guideNext: document.querySelector("#guideNext"),
     resetButton: document.querySelector("#resetButton"),
     checkButton: document.querySelector("#checkButton"),
     resultDialog: document.querySelector("#resultDialog"),
@@ -57,6 +64,26 @@
       elements.saveStatus.textContent = "保存できません";
     }
     updateProgress();
+  }
+
+  function renderGuide(index) {
+    guideIndex = (index + guideCaptions.length) % guideCaptions.length;
+    elements.helpDialog.querySelectorAll("[data-guide-scene]").forEach((scene, sceneIndex) => {
+      const active = sceneIndex === guideIndex;
+      scene.classList.remove("active");
+      scene.hidden = !active;
+      if (active) {
+        void scene.offsetWidth;
+        scene.classList.add("active");
+      }
+    });
+    elements.helpDialog.querySelectorAll("[data-guide-step]").forEach((step, stepIndex) => {
+      const active = stepIndex === guideIndex;
+      step.closest("li").classList.toggle("active", active);
+      step.setAttribute("aria-current", active ? "step" : "false");
+    });
+    elements.guideCounter.textContent = `${guideIndex + 1} / ${guideCaptions.length}`;
+    elements.guideCaption.textContent = guideCaptions[guideIndex];
   }
 
   function activeExercise() {
@@ -526,6 +553,15 @@
   });
 
   elements.checkButton.addEventListener("click", validateCurrentStep);
-  elements.helpButton.addEventListener("click", () => elements.helpDialog.showModal());
+  elements.helpButton.addEventListener("click", () => {
+    renderGuide(0);
+    elements.helpDialog.showModal();
+  });
+  elements.guidePrev.addEventListener("click", () => renderGuide(guideIndex - 1));
+  elements.guideNext.addEventListener("click", () => renderGuide(guideIndex + 1));
+  elements.guideReplay.addEventListener("click", () => renderGuide(guideIndex));
+  elements.helpDialog.querySelectorAll("[data-guide-step]").forEach((step) => {
+    step.addEventListener("click", () => renderGuide(Number(step.dataset.guideStep)));
+  });
   renderExercise();
 })();

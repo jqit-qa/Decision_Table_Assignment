@@ -20,7 +20,7 @@
         </a>
         <div class="topbar-actions">
           <span class="version">rev3.00</span>
-          <button class="icon-button" id="helpButton" type="button" aria-label="使い方を表示">?</button>
+          <button class="help-button" id="helpButton" type="button"><span aria-hidden="true">?</span>使い方</button>
         </div>
       </header>
 
@@ -101,15 +101,72 @@
       <form method="dialog"><button class="button button-primary" type="submit">解答に戻る</button></form>
     </dialog>
 
-    <dialog id="helpDialog" class="dialog help-dialog">
-      <h2>使い方</h2>
-      <ol>
-        <li>問題を選び、上段の仕様を読んでから練習問題または本番問題へ進みます。</li>
-        <li>表のセルを押すと、入力候補が順番に切り替わります。</li>
-        <li>「答え合わせ」で正誤と解説を確認できます。</li>
-        <li>入力内容と進捗は、このブラウザ内に自動保存されます。</li>
-      </ol>
-      <form method="dialog"><button class="button button-primary" type="submit">閉じる</button></form>
+    <dialog id="helpDialog" class="dialog help-dialog" aria-labelledby="helpTitle">
+      <div class="guide-heading">
+        <div>
+          <p class="section-number">見たいところだけ確認</p>
+          <h2 id="helpTitle">使い方</h2>
+          <p>「＜」「＞」または右の手順を押すと、その操作デモが流れます。</p>
+        </div>
+        <form method="dialog"><button class="dialog-close" type="submit" aria-label="使い方を閉じる">×</button></form>
+      </div>
+
+      <div class="completion-guide">
+        <strong>学習の進め方</strong>
+        <p>練習問題から本番問題まで進めてください。本番問題を終え、理解度チェックに全問正解すると、リーダーへ完了通知が送られます。</p>
+        <div class="completion-flow" aria-label="練習問題、本番問題、理解度チェック、リーダーへの通知の順に進みます">
+          <span>練習問題 01・02</span><b aria-hidden="true">→</b><span>本番問題</span><b aria-hidden="true">→</b><span>理解度チェック<br />全問正解</span><b aria-hidden="true">→</b><span class="notification-step">リーダーへ通知</span>
+        </div>
+      </div>
+
+      <div class="guide-layout">
+        <div class="guide-demo" aria-label="操作デモ">
+          <div class="guide-demo-header"><strong>操作デモ</strong><span id="guideCounter">1 / 5</span></div>
+          <div class="guide-demo-stage" id="guideStage" aria-live="polite">
+            <section class="guide-scene active" data-guide-scene="0" aria-label="問題を選ぶ">
+              <p>最初に取り組む問題を選びます</p>
+              <div class="demo-courses"><span class="active"><b>01</b> 練習問題</span><span><b>02</b> 練習問題</span><span><b>03</b> 本番問題</span></div>
+              <i class="demo-pointer" aria-hidden="true">●</i>
+            </section>
+            <section class="guide-scene" data-guide-scene="1" aria-label="仕様を読む" hidden>
+              <p>回答する前に仕様を読みます</p>
+              <div class="demo-spec"><strong>仕様詳細</strong><span></span><span></span><span class="short"></span></div>
+              <i class="demo-pointer" aria-hidden="true">●</i>
+            </section>
+            <section class="guide-scene" data-guide-scene="2" aria-label="セルを入力する" hidden>
+              <p>表のセルを押して入力します</p>
+              <div class="demo-table"><b>条件</b><span>T</span><span>F</span><b>動作</b><span class="selected">X</span><span></span></div>
+              <i class="demo-pointer" aria-hidden="true">●</i>
+            </section>
+            <section class="guide-scene" data-guide-scene="3" aria-label="答え合わせをする" hidden>
+              <p>入力できたら答え合わせをします</p>
+              <div class="demo-check"><span>入力内容は自動保存されます</span><button type="button" tabindex="-1">答え合わせ</button></div>
+              <i class="demo-pointer" aria-hidden="true">●</i>
+            </section>
+            <section class="guide-scene" data-guide-scene="4" aria-label="結果と解説を確認する" hidden>
+              <p>本番問題の最後にだけ実施します</p>
+              <div class="demo-result"><b>✓ 全問正解です</b><span>リーダーへ完了通知が送られます。</span></div>
+            </section>
+          </div>
+          <p class="guide-caption" id="guideCaption">① 問題を選ぶ</p>
+          <div class="guide-controls">
+            <button type="button" id="guidePrev" aria-label="前の手順">＜</button>
+            <button type="button" id="guideReplay">もう一度見る</button>
+            <button type="button" id="guideNext" aria-label="次の手順">＞</button>
+          </div>
+        </div>
+
+        <ol class="guide-steps" id="guideSteps">
+          <li class="active"><button type="button" data-guide-step="0"><b>1</b><span><strong>問題を選ぶ</strong><small>練習問題01から順に進めます。</small></span></button></li>
+          <li><button type="button" data-guide-step="1"><b>2</b><span><strong>仕様を読む</strong><small>条件と期待される動作を確認します。</small></span></button></li>
+          <li><button type="button" data-guide-step="2"><b>3</b><span><strong>回答を入力する</strong><small>セルを押すと T・F・− などが切り替わります。</small></span></button></li>
+          <li><button type="button" data-guide-step="3"><b>4</b><span><strong>答え合わせをする</strong><small>間違いがあれば、表示されたヒントを確認します。</small></span></button></li>
+          <li class="production-only"><button type="button" data-guide-step="4"><b>5</b><span><strong>理解度チェックを完了する <em>本番問題のみ</em></strong><small>本番問題の最後に実施します。全問正解するとリーダーへ完了通知が送られます。</small></span></button></li>
+        </ol>
+      </div>
+
+      <div class="guide-note"><strong>迷ったときは</strong><span>画面上部の「使い方」から、いつでもこの説明を開けます。</span></div>
+      <form method="dialog" class="guide-footer"><button class="button button-primary" type="submit">わかりました</button></form>
     </dialog>
 
     <script src="data.js"></script>

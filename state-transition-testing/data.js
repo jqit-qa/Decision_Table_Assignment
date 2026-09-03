@@ -2,7 +2,15 @@
   "use strict";
   const cell = (correct, wrong = "→同じ状態／何もしない") => ({ options: ["— 無効遷移", correct, wrong], answer: 1 });
   const invalid = (wrong = "→同じ状態／何もしない") => ({ options: ["— 無効遷移", wrong], answer: 0 });
-  window.TRAINING_META = { title: "状態遷移テスト トレーニング", storageKey: "state-transition-training-rev1-state-v1", version: 1 };
+  window.TRAINING_META = {
+    title: "状態遷移テスト トレーニング", displayName: "状態遷移テスト", code: "ST", revision: "rev1.00",
+    storageKey: "state-transition-training-rev1-state-v1", version: 1,
+    colors: { primary: "#6b4aa0", dark: "#4d3478", soft: "#f1ecf8", accent: "#b06a1b" },
+    legend: [
+      { term: "状態", description: "システムの現在の状況" }, { term: "イベント", description: "遷移を起こす操作・事象" },
+      { term: "ガード", description: "遷移を分ける条件" }, { term: "無効遷移", description: "仕様上反応しない組み合わせ" }
+    ]
+  };
   window.TRAINING_EXERCISES = [
     {
       id: "practice-1", section: "練習問題 01", navTitle: "状態表の基本", title: "自動販売機", goal: "状態とイベントを洗い出し、状態表の各セルに遷移とアクションを対応づけます。",
